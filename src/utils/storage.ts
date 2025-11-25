@@ -1,32 +1,22 @@
-import type { ScheduleItem, TargetItem } from '../types/index';
-
-const SCHEDULE_KEY = 'daily-schedule';
-const TARGET_KEY = 'daily-targets';
-
-export const storage = {
-  // Schedule methods
-  getSchedules: (): ScheduleItem[] => {
+export const Storage = {
+  get: <T>(key: string, defaultValue: T): T => {
     try {
-      return JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '[]');
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : defaultValue;
     } catch {
-      return [];
+      return defaultValue;
     }
   },
 
-  saveSchedules: (schedules: ScheduleItem[]) => {
-    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedules));
-  },
-
-  // Target methods
-  getTargets: (): TargetItem[] => {
+  set: <T>(key: string, value: T): void => {
     try {
-      return JSON.parse(localStorage.getItem(TARGET_KEY) || '[]');
-    } catch {
-      return [];
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
     }
   },
 
-  saveTargets: (targets: TargetItem[]) => {
-    localStorage.setItem(TARGET_KEY, JSON.stringify(targets));
-  },
+  remove: (key: string): void => {
+    localStorage.removeItem(key);
+  }
 };

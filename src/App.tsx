@@ -1,142 +1,98 @@
-import { useState, useEffect } from 'react';
-import type { ScheduleItem, TargetItem, ActiveTab, ModalMode, ItemType } from './types/index';
-import { storage } from './utils/storage';
-import Home from './pages/Home';
-import Target from './pages/Target';
-import Statistics from './pages/Statistics';
-import BottomNav from './components/BottomNav';
-import FloatingButton from './components/FloatingButton';
-import AddItemModal from './components/AddItemModal';
+import { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './stores/authStore';
+import { useChecklistStore } from './stores/checklistStore';
+import { useSavingsStore } from './stores/savingsStore';
+import { useProfileStore } from './stores/profileStore';
+import { useTheme } from './hooks/useTheme';
+import { Login } from './pages/Login';
+import { Daily } from './pages/Daily';
+import { Weekly } from './pages/Weekly';
+import { Monthly } from './pages/Monthly';
+import { Savings } from './pages/Savings';
+import { Settings } from './pages/Settings';
+import { Sidebar } from './components/Layout/Sidebar';
+import { BottomNav } from './components/Layout/BottomNav';
+import { Header } from './components/Layout/Header';
 
 function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('home');
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
-  const [targets, setTargets] = useState<TargetItem[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<ModalMode>('add');
-  const [modalItemType, setModalItemType] = useState<ItemType>('schedule');
-  const [editingItem, setEditingItem] = useState<ScheduleItem | TargetItem | undefined>();
+  const { user, isAuthenticated, initialize: initializeAuth } = useAuthStore();
+  const { initialize: initializeChecklist } = useChecklistStore();
+  const { initialize: initializeSavings } = useSavingsStore();
+  const { initialize: initializeProfile } = useProfileStore();
+  const { isDark } = useTheme();
+  
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Load data from localStorage on component mount
+  // Apply Dark Mode to document root
   useEffect(() => {
-    setSchedules(storage.getSchedules());
-    setTargets(storage.getTargets());
-  }, []);
-
-  // Save data to localStorage whenever schedules or targets change
-  useEffect(() => {
-    storage.saveSchedules(schedules);
-  }, [schedules]);
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
   useEffect(() => {
-    storage.saveTargets(targets);
-  }, [targets]);
+    initializeAuth();
+    initializeProfile();
+  }, [initializeAuth, initializeProfile]);
 
-  const handleAddClick = () => {
-    setModalMode('add');
-    setModalItemType(activeTab === 'home' ? 'schedule' : 'target');
-    setEditingItem(undefined);
-    setIsModalOpen(true);
-  };
-
-  const handleEditSchedule = (schedule: ScheduleItem) => {
-    setModalMode('edit');
-    setModalItemType('schedule');
-    setEditingItem(schedule);
-    setIsModalOpen(true);
-  };
-
-  const handleEditTarget = (target: TargetItem) => {
-    setModalMode('edit');
-    setModalItemType('target');
-    setEditingItem(target);
-    setIsModalOpen(true);
-  };
-
-  const handleSaveItem = (item: ScheduleItem | TargetItem) => {
-    if (modalItemType === 'schedule') {
-      const schedule = item as ScheduleItem;
-      if (modalMode === 'add') {
-        setSchedules(prev => [...prev, schedule]);
-      } else {
-        setSchedules(prev => prev.map(s => s.id === schedule.id ? schedule : s));
-      }
-    } else {
-      const target = item as TargetItem;
-      if (modalMode === 'add') {
-        setTargets(prev => [...prev, target]);
-      } else {
-        setTargets(prev => prev.map(t => t.id === target.id ? target : t));
-      }
+  useEffect(() => {
+    if (user) {
+      initializeChecklist(user.id);
+      initializeSavings(user.id);
     }
+  }, [user, initializeChecklist, initializeSavings]);
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  const pageTitles = {
+    '/daily': 'Checklist Harian',
+    '/weekly': 'Target Mingguan',
+    '/monthly': 'Pencapaian Bulanan',
+    '/savings': 'Tabungan Ibadah',
+    '/settings': 'Pengaturan'
   };
 
-  const handleDeleteSchedule = (id: string) => {
-    setSchedules(prev => prev.filter(s => s.id !== id));
-  };
-
-  const handleDeleteTarget = (id: string) => {
-    setTargets(prev => prev.filter(t => t.id !== id));
-  };
-
-  const handleToggleScheduleComplete = (id: string) => {
-    setSchedules(prev => prev.map(s => 
-      s.id === id ? { ...s, completed: !s.completed } : s
-    ));
-  };
-
-  const handleToggleTargetComplete = (id: string) => {
-    setTargets(prev => prev.map(t => 
-      t.id === id ? { ...t, completed: !t.completed } : t
-    ));
-  };
-
-  const renderPage = () => {
-    switch (activeTab) {
-      case 'home':
-        return (
-          <Home
-            schedules={schedules}
-            onEditSchedule={handleEditSchedule}
-            onDeleteSchedule={handleDeleteSchedule}
-            onToggleScheduleComplete={handleToggleScheduleComplete}
-          />
-        );
-      case 'target':
-        return (
-          <Target
-            targets={targets}
-            onEditTarget={handleEditTarget}
-            onDeleteTarget={handleDeleteTarget}
-            onToggleTargetComplete={handleToggleTargetComplete}
-          />
-        );
-      case 'statistics':
-        return <Statistics schedules={schedules} targets={targets} />;
-      default:
-        return null;
-    }
-  };
+  const currentPath = window.location.pathname;
+  const currentTitle = pageTitles[currentPath as keyof typeof pageTitles] || 'Ibadah Tracker';
 
   return (
-    <div className="min-h-screen bg-gray-50 relative max-w-md mx-auto">
-      {renderPage()}
-      
-      <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      {(activeTab === 'home' || activeTab === 'target') && (
-        <FloatingButton onClick={handleAddClick} />
-      )}
+    <Router>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+        
+        {/* Sidebar (Desktop) */}
+        <div className="hidden lg:block lg:w-64">
+          <Sidebar isOpen={true} onClose={() => setSidebarOpen(false)} />
+        </div>
 
-      <AddItemModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveItem}
-        mode={modalMode}
-        itemType={modalItemType}
-        editingItem={editingItem}
-      />
-    </div>
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col lg:ml-0">
+          <Header 
+            onMenuClick={() => setSidebarOpen(true)} 
+            title={currentTitle}
+          />
+          
+          {/* Sidebar Mobile */}
+          <Sidebar 
+            isOpen={sidebarOpen} 
+            onClose={() => setSidebarOpen(false)} 
+          />
+
+          <main className="flex-1 p-4 overflow-auto">
+            <Routes>
+              <Route path="/" element={<Navigate to="/daily" replace />} />
+              <Route path="/daily" element={<Daily />} />
+              <Route path="/weekly" element={<Weekly />} />
+              <Route path="/monthly" element={<Monthly />} />
+              <Route path="/savings" element={<Savings />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </main>
+
+          <BottomNav />
+        </div>
+      </div>
+    </Router>
   );
 }
 

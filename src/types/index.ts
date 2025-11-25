@@ -1,17 +1,44 @@
-export interface ScheduleItem {
+export interface User {
   id: string;
-  time: string;
-  title: string;
-  category?: string;
-  completed: boolean;
+  username: string;
+  password: string;
+  name: string;
 }
 
-export interface TargetItem {
+export interface DailyChecklist {
   id: string;
-  title: string;
-  completed: boolean;
+  name: string;
+  category: string;
+  checked: boolean;
+  time?: string;
 }
 
-export type ActiveTab = 'home' | 'target' | 'statistics';
-export type ModalMode = 'add' | 'edit';
-export type ItemType = 'schedule' | 'target';
+export interface WeeklyGoal {
+  id: string;
+  name: string;
+  target: number;
+  current: number;
+  unit: string;
+}
+
+export interface MonthlyAchievement {
+  month: string;
+  year: number;
+  totalChecked: number;
+  totalItems: number;
+  badge?: 'Gold' | 'Silver' | 'Bronze';
+}
+
+export interface SavingsTransaction {
+  id: string;
+  amount: number;
+  category: string;
+  date: string;
+  description?: string;
+}
+
+export interface SavingsData {
+  total: number;
+  transactions: SavingsTransaction[];
+  monthlyData: { month: string; amount: number }[];
+}
